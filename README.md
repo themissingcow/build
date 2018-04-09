@@ -17,11 +17,15 @@ Usage
 
 Build and upload a gaffer release :
 
-`./build.py --project gaffer --version 0.45.0.0 --upload 1`
+`./build.py --version 0.45.0.0 --upload 1`
 
 Build and upload a dependencies release :
 
 `./build.py --project dependencies --version 0.45.0.0 --upload 1`
+
+Make a Linux release using Docker on a Mac :
+
+`./build.py --docker 1 --arnoldRoot /path/to/linux/arnoldRoot --delightRoot /path/to/linux/delightRoot --version 0.45.0.0 --upload 1`
 
 Steps remaining to be automated
 -------------------------------

@@ -55,6 +55,24 @@ parser.add_argument(
 )
 
 parser.add_argument(
+	"--arnoldRoot",
+	default = os.environ["ARNOLD_ROOT"],
+	help = "The root of an installation of Arnold 5. "
+	       "Note that if cross-compiling a Linux build "
+	       "using Docker on a Mac, this must point to "
+	       "a Linux build of Arnold."
+)
+
+parser.add_argument(
+	"--delightRoot",
+	default = os.environ["DELIGHT"],
+	help = "The root of an installation of 3Delight 13. "
+	       "Note that if cross-compiling a Linux build "
+	       "using Docker on a Mac, this must point to "
+	       "a Linux build of 3Delight."
+)
+
+parser.add_argument(
 	"--version",
 	help = "The version to build. Can either be a tag or SHA1 commit hash."
 )
@@ -87,21 +105,30 @@ args = parser.parse_args()
 
 if args.interactive :
 	if not args.docker :
-		parser.error( "--interactive requires --docker")
-		sys.exit( 1 )
+		parser.exit( 1, "--interactive requires --docker\n" )
 	if args.version or args.upload :
-		parser.error( "--interactive can not be used with other flags")
-		sys.exit( 1 )
+		parser.exit( 1, "--interactive can not be used with other flags\n" )
 else :
 	if not args.version :
-		parser.error( "--version argument is required")
-		sys.exit( 1 )
+		parser.exit( "--version argument is required")
 
 # Check that our environment contains everything we need to do a build.
 
-for envVar in ( "GITHUB_RELEASE_TOKEN", "ARNOLD_ROOT", "DELIGHT" ) :
+for envVar in ( "GITHUB_RELEASE_TOKEN", ) :
 	if envVar not in os.environ	:
-		raise Exception( "{0} environment variable not set".format( envVar ) )
+		parser.exit( 1,  "{0} environment variable not set".format( envVar ) )
+
+# Check that the paths to the renderers are sane.
+
+libExtension = ".so" if "linux" in sys.platform or args.docker else ".dylib"
+
+arnoldLib = args.arnoldRoot + "/bin/libai" + libExtension
+if not os.path.exists( arnoldLib ) :
+	parser.exit( 1, "{0} not found\n".format( arnoldLib ) )
+
+delightLib = args.delightRoot + "/lib/lib3delight" + libExtension
+if not os.path.exists( delightLib ) :
+	parser.exit( 1, "{0} not found\n".format( delightLib ) )
 
 # Build a little dictionary of variables we'll need over and over again
 # in string formatting operations, and use it to figure out what
@@ -112,8 +139,8 @@ formatVariables = {
 	"version" : args.version,
 	"upload" : args.upload,
 	"platform" : "osx" if sys.platform == "darwin" else "linux",
-	"arnoldRoot" : os.environ["ARNOLD_ROOT"],
-	"delight" : os.environ["DELIGHT"],
+	"arnoldRoot" : args.arnoldRoot,
+	"delight" : args.delightRoot,
 	"releaseToken" : os.environ["GITHUB_RELEASE_TOKEN"],
 }
 
@@ -229,6 +256,7 @@ if args.upload :
 		'curl {auth}'
 		' -H "Content-Type: application/zip"'
 		' --data-binary @{uploadFile} "{uploadURL}"'
+		' -o /tmp/curlResult.txt' # Must specify output file in order to get progress output
 	).format(
 		auth = auth,
 		uploadURL = "https://uploads.github.com/repos/GafferHQ/{project}/releases/{id}/assets?name={uploadName}".format(
