@@ -234,7 +234,10 @@ if args.project == "gaffer" :
 
 else :
 
-	buildCommand = "env RMAN_ROOT={delight} ARNOLD_ROOT={arnoldRoot} BUILD_DIR=/gafferDependenciesBuild ./build/buildAll.sh ".format( **formatVariables )
+	buildCommand = "env RMAN_ROOT={delight} ARNOLD_ROOT={arnoldRoot} BUILD_DIR={cwd}/gafferDependenciesBuild ./build/buildAll.sh ".format(
+		cwd = os.getcwd(),
+		**formatVariables
+	)
 
 sys.stderr.write( buildCommand + "\n" )
 subprocess.check_call( buildCommand, shell=True )
