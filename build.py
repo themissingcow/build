@@ -154,7 +154,7 @@ else :
 
 if args.docker and not os.path.exists( "/.dockerenv" ) :
 
-	imageCommand = "docker build --target {project}-builder -t gafferhq-build .".format( **formatVariables )
+	imageCommand = "docker build -t gafferhq-build .".format( **formatVariables )
 	sys.stderr.write( imageCommand + "\n" )
 	subprocess.check_call( imageCommand, shell = True )
 
