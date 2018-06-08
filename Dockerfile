@@ -1,8 +1,6 @@
-# We start with an ancient OS, so our builds are very
-# permissive in terms of their glibc requirements
-# when deployed elsewhere. First we define an image
-# with the minimum requirements to build the
-# GafferHQ/dependencies project.
+# We start with CentOS 7, because it is commonly used in
+# production, and meets the glibc requirements of VFXPlatform 2018
+# (2.17 or lower).
 
 FROM centos:7
 
