@@ -32,8 +32,6 @@ Steps remaining to be automated
 
 - Update https://github.com/GafferHQ/documentation to include
   the latest docs.
-- Update https://github.com/GafferHQ/gafferhq.github.io to point
-  to the latest release.
 
 Docker Cheatsheet
 -----------------
