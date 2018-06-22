@@ -62,6 +62,7 @@ RUN yum install -y fontconfig-devel.x86_64
 # is incompatible with later versions.
 
 RUN yum install -y xorg-x11-server-Xvfb
+RUN yum install -y mesa-dri-drivers.x86_64
 
 RUN pip install sphinx==1.4 sphinx_rtd_theme recommonmark
 
