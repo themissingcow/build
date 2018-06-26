@@ -178,7 +178,7 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 
 	if not args.interactive :
 		# Copy out the generated package.
-		copyCommand = "docker cp {container}:{uploadFile} ./".format(
+		copyCommand = "docker cp {container}:/{project}-{version}-source/{uploadFile} ./".format(
 			container = containerName,
 			**formatVariables
 		)
