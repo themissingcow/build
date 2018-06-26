@@ -193,6 +193,7 @@ if os.path.exists( "/.dockerenv" ) and args.project == "gaffer" :
 	# documentation builds.
 	os.system( "Xvfb :99 -screen 0 1280x1024x24 &" )
 	os.environ["DISPLAY"] = ":99"
+	os.system( "metacity&" )
 
 # Download source code
 
