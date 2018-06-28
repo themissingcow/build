@@ -178,7 +178,7 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 
 	if not args.interactive :
 		# Copy out the generated package.
-		copyCommand = "docker cp {container}:{uploadFile} ./".format(
+		copyCommand = "docker cp {container}:/{project}-{version}-source/{uploadFile} ./".format(
 			container = containerName,
 			**formatVariables
 		)
@@ -193,6 +193,7 @@ if os.path.exists( "/.dockerenv" ) and args.project == "gaffer" :
 	# documentation builds.
 	os.system( "Xvfb :99 -screen 0 1280x1024x24 &" )
 	os.environ["DISPLAY"] = ":99"
+	os.system( "metacity&" )
 
 # Download source code
 
