@@ -59,7 +59,10 @@ RUN yum install -y fontconfig-devel.x86_64
 # Install packages needed to generate the
 # Gaffer documentation. Note that we are
 # limited to Sphinx 1.4 because recommonmark
-# is incompatible with later versions.
+# is incompatible with later versions. And
+# we are limited to docutils 0.12 because
+# Sphinx 1.4 is incompatible with later
+# versions.
 
 RUN yum install -y xorg-x11-server-Xvfb
 RUN yum install -y mesa-dri-drivers.x86_64
@@ -67,6 +70,7 @@ RUN yum install -y metacity
 RUN yum install -y gnome-themes-standard
 
 RUN pip install sphinx==1.4 sphinx_rtd_theme recommonmark
+RUN pip install docutils==0.12
 
 RUN yum install -y inkscape
 
