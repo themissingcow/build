@@ -142,12 +142,30 @@ formatVariables = {
 	"arnoldRoot" : args.arnoldRoot,
 	"delight" : args.delightRoot,
 	"releaseToken" : os.environ["GITHUB_RELEASE_TOKEN"],
+	"auth" : '-H "Authorization: token {}"'.format( os.environ["GITHUB_RELEASE_TOKEN"] )
 }
 
 if args.project == "gaffer" :
 	formatVariables["uploadFile"] = "{project}-{version}-{platform}.tar.gz".format( **formatVariables )
 else :
 	formatVariables["uploadFile"] = "gafferDependencies-{version}-{platform}.tar.gz".format( **formatVariables )
+
+# If we're going to be doing an upload, then check that the release exists. Better
+# to find out now than at the end of a lengthy build.
+
+def releaseId() :
+
+	release = subprocess.check_output(
+		"curl -s {auth} https://api.github.com/repos/GafferHQ/{project}/releases/tags/{version}".format(
+			**formatVariables
+		),
+		shell = True
+	)
+	release = json.loads( release )
+	return release.get( "id" )
+
+if args.upload and releaseId() is None :
+	parser.exit( 1, "Release {version} not found\n".format( **formatVariables ) )
 
 # Restart ourselves inside a Docker container so that we use a repeatable
 # build environment.
@@ -247,24 +265,14 @@ subprocess.check_call( buildCommand, shell=True )
 
 if args.upload :
 
-	auth = '-H "Authorization: token {releaseToken}"'.format( **formatVariables )
-	release = subprocess.check_output(
-		"curl -s {auth} https://api.github.com/repos/GafferHQ/{project}/releases/tags/{version}".format(
-			auth = auth, **formatVariables
-		),
-		shell = True
-	)
-	release = json.loads( release )
-
 	uploadCommand = (
 		'curl {auth}'
 		' -H "Content-Type: application/zip"'
 		' --data-binary @{uploadFile} "{uploadURL}"'
 		' -o /tmp/curlResult.txt' # Must specify output file in order to get progress output
 	).format(
-		auth = auth,
 		uploadURL = "https://uploads.github.com/repos/GafferHQ/{project}/releases/{id}/assets?name={uploadName}".format(
-			id = release["id"],
+			id = releaseId(),
 			uploadName = os.path.basename( formatVariables["uploadFile"] ),
 			**formatVariables
 		),
