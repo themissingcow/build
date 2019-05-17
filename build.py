@@ -48,6 +48,12 @@ import multiprocessing
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
+	"--organisation",
+	default = "GafferHQ",
+	help = "The GitHub organisation containing the project to build."
+)
+
+parser.add_argument(
 	"--project",
 	default = "gaffer",
 	choices = [ "gaffer", "dependencies" ],
@@ -135,6 +141,7 @@ if not os.path.exists( delightLib ) :
 # package we will eventually be generating.
 
 formatVariables = {
+	"organisation" : args.organisation,
 	"project" : args.project,
 	"version" : args.version,
 	"upload" : args.upload,
@@ -156,7 +163,7 @@ else :
 def releaseId() :
 
 	release = subprocess.check_output(
-		"curl -s {auth} https://api.github.com/repos/GafferHQ/{project}/releases/tags/{version}".format(
+		"curl -s {auth} https://api.github.com/repos/{organisation}/{project}/releases/tags/{version}".format(
 			**formatVariables
 		),
 		shell = True
@@ -215,7 +222,7 @@ if os.path.exists( "/.dockerenv" ) and args.project == "gaffer" :
 
 # Download source code
 
-sourceURL = "https://github.com/GafferHQ/{project}/archive/{version}.tar.gz".format( **formatVariables )
+sourceURL = "https://github.com/{organisation}/{project}/archive/{version}.tar.gz".format( **formatVariables )
 sys.stderr.write( "Downloading source \"%s\"\n" % sourceURL )
 
 sourceDirName = "{project}-{version}-source".format( **formatVariables )
@@ -271,7 +278,7 @@ if args.upload :
 		' --data-binary @{uploadFile} "{uploadURL}"'
 		' -o /tmp/curlResult.txt' # Must specify output file in order to get progress output
 	).format(
-		uploadURL = "https://uploads.github.com/repos/GafferHQ/{project}/releases/{id}/assets?name={uploadName}".format(
+		uploadURL = "https://uploads.github.com/repos/{organisation}/{project}/releases/{id}/assets?name={uploadName}".format(
 			id = releaseId(),
 			uploadName = os.path.basename( formatVariables["uploadFile"] ),
 			**formatVariables
