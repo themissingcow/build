@@ -126,7 +126,8 @@ for envVar in ( "GITHUB_RELEASE_TOKEN", ) :
 
 # Check that the paths to the renderers are sane.
 
-libExtension = ".so" if "linux" in sys.platform or args.docker else ".dylib"
+platform = "linux" if "linux" in sys.platform or args.docker else "osx"
+libExtension = ".so" if platform == "linux" else ".dylib"
 
 arnoldLib = args.arnoldRoot + "/bin/libai" + libExtension
 if not os.path.exists( arnoldLib ) :
@@ -145,7 +146,7 @@ formatVariables = {
 	"project" : args.project,
 	"version" : args.version,
 	"upload" : args.upload,
-	"platform" : "osx" if sys.platform == "darwin" else "linux",
+	"platform" : platform,
 	"arnoldRoot" : args.arnoldRoot,
 	"delight" : args.delightRoot,
 	"releaseToken" : os.environ["GITHUB_RELEASE_TOKEN"],
