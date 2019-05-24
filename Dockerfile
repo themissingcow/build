@@ -2,7 +2,7 @@
 # production, and meets the glibc requirements of VFXPlatform 2018
 # (2.17 or lower).
 
-FROM centos:7
+FROM centos:7.6.1810
 
 # We have to install scl as a separate yum command for some reason
 # otherwise we get `scl not found` errors...
