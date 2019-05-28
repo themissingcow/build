@@ -67,9 +67,9 @@ RUN yum install -y \
 		xorg-x11-server-Xvfb \
 		mesa-dri-drivers.x86_64 \
 		metacity \
-		gnome-themes-standard
+		gnome-themes-standard && \
 #
-RUN pip install \
+	pip install \
 		sphinx==1.8.0 \
 		sphinx_rtd_theme==0.4.3 \
 		recommonmark==0.4.0 \
