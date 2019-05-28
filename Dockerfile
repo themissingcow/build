@@ -21,7 +21,7 @@ RUN yum install -y centos-release-scl && \
 	ln -s /usr/bin/cmake3 /usr/bin/cmake && \
 #
 	yum install -y python2-pip.noarch && \
-	pip install --egg scons && \
+	pip install --egg scons==3.0.5 && \
 #
 	yum install -y \
 		patch \
@@ -70,9 +70,9 @@ RUN yum install -y \
 		gnome-themes-standard
 #
 RUN pip install \
-		sphinx==1.8 \
-		sphinx_rtd_theme \
-		recommonmark \
+		sphinx==1.8.0 \
+		sphinx_rtd_theme==0.4.3 \
+		recommonmark==0.4.0 \
 		docutils==0.12 && \
 #
 	yum install -y inkscape
