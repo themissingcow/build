@@ -23,7 +23,7 @@ RUN yum install -y yum-versionlock && \
 # NOTE: If you add a new yum package here, make sure you update the version
 # lock files as follows and commit the changes to yum-versionlock.list:
 #
-#   ./build.py --project build --update-package-versions 1 --new-only 1
+#   ./build-docker.py --update-package-versions --new-only
 #
 # We have to install scl as a separate yum command for some reason
 # otherwise we get `scl not found` errors...
