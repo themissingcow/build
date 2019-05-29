@@ -4,8 +4,6 @@
 
 FROM centos:7.6.1810
 
-COPY build.py ./
-
 # As we don't want to inadvertently grab newer versions of our yum-installed
 # packages, we use yum-versionlock to keep them pinned. We track the list of
 # image packages here, then compare after our install steps to see what was

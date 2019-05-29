@@ -292,6 +292,28 @@ else :
 	if args.docker and not os.path.exists( "/.dockerenv" ) :
 
 		image = "gafferhq/build:%s" % args.buildEnv
+		containerName = dockerContainerName()
+
+		# We don't keep build.py in the images (otherwise we'd have to maintain
+		# backwards compatibility when changing this script), so copy it in
+
+		containerPrepCommand = " && ".join( (
+			"docker create --name {name} {image}",
+			"docker cp build.py {name}:/build.py",
+			# This saves our changes to that container, so we can pick it up
+			# in run later. We can't use exec as when you 'start' the image
+			# it immediately exits as there is nothing to do. Docker is process
+			# centric not 'machine' centric. You can either add in nasty sleep
+			# commands into the image, but this seems to be the more 'docker'
+			# way to do it.
+			"docker commit {name} {image}-run",
+			"docker rm {name}"
+		) ).format(
+			name = containerName,
+			image = image
+		)
+		sys.stderr.write( containerPrepCommand + "\n" )
+		subprocess.check_call( containerPrepCommand, shell = True )
 
 		containerEnv = []
 		if githubToken :
@@ -312,9 +334,11 @@ else :
 		if args.interactive :
 			containerCommand = "env {env} bash".format( env = containerEnv )
 		else :
-			containerCommand = "env {env} bash -c './build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
+			containerCommand = "env {env} bash -c '/build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
 
-		dockerCommand = "docker run {mounts} --name {name} -i -t {image} {command}".format(
+		containerMounts = "-v {arnoldRoot}:/arnold:ro,Z -v {delight}:/delight:ro,Z".format( **formatVariables )
+
+		dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
 			mounts = containerMounts,
 			name = containerName,
 			image = image,
@@ -325,8 +349,8 @@ else :
 
 		if not args.interactive :
 			# Copy out the generated package.
-			copyCommand = "docker cp {container}:/{project}-{version}-source/{uploadFile} ./".format(
-				container = containerName,
+			copyCommand = "docker cp {name}:/{project}-{version}-source/{uploadFile} ./".format(
+				name = containerName,
 				**formatVariables
 			)
 			sys.stderr.write( copyCommand + "\n" )
