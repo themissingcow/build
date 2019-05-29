@@ -201,6 +201,28 @@ if args.upload and releaseId() is None :
 if args.docker and not os.path.exists( "/.dockerenv" ) :
 
 	image = "%s:%s" % ( args.buildEnvImage, args.buildEnvVersion )
+	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
+
+	# We don't keep build.py in the images (otherwise we'd have to maintain
+	# backwards compatibility when changing this script), so copy it in
+
+	containerPrepCommand = " && ".join( (
+		"docker create --name {name} {image}",
+		"docker cp build.py {name}:/build.py",
+		# This saves our changes to that container, so we can pick it up
+		# in run later. We can't use exec as when you 'start' the image
+		# it immediately exits as there is nothing to do. Docker is process
+		# centric not 'machine' centric. You can either add in nasty sleep
+		# commands into the image, but this seems to be the more 'docker'
+		# way to do it.
+		"docker commit {name} {image}-run",
+		"docker rm {name}"
+	) ).format(
+		name = containerName,
+		image = image
+	)
+	sys.stderr.write( containerPrepCommand + "\n" )
+	subprocess.check_call( containerPrepCommand, shell = True )
 
 	containerEnv = []
 	if githubToken :
@@ -214,14 +236,13 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 		containerMounts.append( " -v %s:/delight:ro,Z" % args.delightRoot )
 		containerEnv.append( "DELIGHT=/delight" )
 
-	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
 	containerEnv = " ".join( containerEnv )
 	containerMounts = " ".join( containerMounts )
 
 	if args.interactive :
 		containerCommand = "env {env} bash".format( env = containerEnv )
 	else :
-		containerCommand = "env {env} bash -c './build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
+		containerCommand = "env {env} bash -c '/build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
 
 	dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
 		mounts = containerMounts,
