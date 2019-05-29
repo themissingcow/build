@@ -189,18 +189,18 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
 
 	if args.interactive :
-		containerBashCommand = "{env} bash".format( env = containerEnv )
+		containerCommand = "env {env} bash".format( env = containerEnv )
 	else :
-		containerBashCommand = "{env} ./build.py --project {project} --version {version} --upload {upload}".format( env = containerEnv, **formatVariables )
+		containerCommand = "env {env} bash -c './build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
 
-	containerCommand = "docker run {mounts} --name {name} -i -t gafferhq-build -c '{command}'".format(
+	dockerCommand = "docker run {mounts} --name {name} -i -t gafferhq-build {command}".format(
 		name = containerName,
 		mounts = containerMounts,
-		command = containerBashCommand
+		command = containerCommand
 	)
 
-	sys.stderr.write( containerCommand + "\n" )
-	subprocess.check_call( containerCommand, shell = True )
+	sys.stderr.write( dockerCommand + "\n" )
+	subprocess.check_call( dockerCommand, shell = True )
 
 	if not args.interactive :
 		# Copy out the generated package.
