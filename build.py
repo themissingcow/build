@@ -68,6 +68,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+	"--source",
+	default = "",
+	help = "If specified the source at the following path "
+	       "will be used instead of downloading"
+)
+
+parser.add_argument(
 	"--arnoldRoot",
 	default = os.environ.get( "ARNOLD_ROOT", "" ),
 	help = "The root of an installation of Arnold 5. "
@@ -287,6 +294,42 @@ else :
 	if args.upload and releaseId() is None :
 		parser.exit( 1, "Release {version} not found\n".format( **formatVariables ) )
 
+
+	sourcePath = args.source
+	if not sourcePath :
+
+		# Download source code
+
+		sourceURL = "https://github.com/{organisation}/{project}/archive/{version}.tar.gz".format( **formatVariables )
+		sys.stderr.write( "Downloading source \"%s\"\n" % sourceURL )
+
+		sourceDirName = "{project}-{version}-source".format( **formatVariables )
+		tarFileName = "{0}.tar.gz".format( sourceDirName )
+		downloadCommand = "curl -L {0} > {1}".format( sourceURL, tarFileName )
+		sys.stderr.write( downloadCommand + "\n" )
+		subprocess.check_call( downloadCommand, shell = True )
+
+		sys.stderr.write( "Decompressing source to \"%s\"\n" % sourceDirName )
+
+		sourcePath = os.path.join( os.getcwd(), sourceDirName )
+
+		shutil.rmtree( sourceDirName, ignore_errors = True )
+		os.makedirs( sourceDirName )
+		subprocess.check_call( "tar xf %s -C %s --strip-components=1" % ( tarFileName, sourceDirName ), shell = True )
+
+		# Download precompiled dependencies. We do this using the
+		# same script that is used to download the dependencies for
+		# testing on Travis, so that release builds are always made
+		# against the same dependencies we have tested against.
+
+		if args.project == "gaffer" :
+			oldDir = os.getcwd()
+			os.chdir( sourceDirName )
+			try :
+				subprocess.check_call( "./config/travis/installDependencies.sh %s" % platform, shell = True )
+			finally :
+				os.chdir( oldDir )
+
 	# Restart ourselves inside a Docker container so that we use a repeatable
 	# build environment.
 	if args.docker and not os.path.exists( "/.dockerenv" ) :
@@ -320,6 +363,9 @@ else :
 			containerEnv.append( "GITHUB_RELEASE_TOKEN=%s" % githubToken )
 
 		containerMounts = []
+
+		containerMounts.append( "-v %s:/source:Z" % sourcePath )
+
 		if args.arnoldRoot :
 			containerMounts.append( "-v %s:/arnold:ro,Z" % args.arnoldRoot )
 			containerEnv.append( "ARNOLD_ROOT=/arnold" )
@@ -335,7 +381,7 @@ else :
 		if args.interactive :
 			containerCommand = "env {env} bash".format( env = containerEnv )
 		else :
-			containerCommand = "env {env} bash -c '/build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
+			containerCommand = "env {env} bash -c '/build.py --project {project} --version {version} --upload {upload} --source /source'".format( env = containerEnv, **formatVariables )
 
 		dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
 			mounts = containerMounts,
@@ -360,6 +406,9 @@ else :
 	# Here we're actually doing the build, this will run either locally or inside
 	# the container bootstrapped above
 
+	os.chdir( args.source or sourceDirName )
+	sys.stderr.write( "cwd: %s\n" % os.getcwd() )
+
 	if os.path.exists( "/.dockerenv" ) and args.project == "gaffer" :
 
 		# Start an X server so we can generate screenshots when the
@@ -368,31 +417,6 @@ else :
 		os.environ["DISPLAY"] = ":99"
 		os.system( "metacity&" )
 
-	# Download source code
-
-	sourceURL = "https://github.com/{organisation}/{project}/archive/{version}.tar.gz".format( **formatVariables )
-	sys.stderr.write( "Downloading source \"%s\"\n" % sourceURL )
-
-	sourceDirName = "{project}-{version}-source".format( **formatVariables )
-	tarFileName = "{0}.tar.gz".format( sourceDirName )
-	downloadCommand = "curl -L {0} > {1}".format( sourceURL, tarFileName )
-	sys.stderr.write( downloadCommand + "\n" )
-	subprocess.check_call( downloadCommand, shell = True )
-
-	sys.stderr.write( "Decompressing source to \"%s\"\n" % sourceDirName )
-
-	shutil.rmtree( sourceDirName, ignore_errors = True )
-	os.makedirs( sourceDirName )
-	subprocess.check_call( "tar xf %s -C %s --strip-components=1" % ( tarFileName, sourceDirName ), shell = True )
-	os.chdir( sourceDirName )
-
-	# Download precompiled dependencies. We do this using the
-	# same script that is used to download the dependencies for
-	# testing on Travis, so that release builds are always made
-	# against the same dependencies we have tested against.
-
-	if args.project == "gaffer" :
-		subprocess.check_call( "./config/travis/installDependencies.sh", shell = True )
 
 	# Perform the build.
 
@@ -412,6 +436,7 @@ else :
 			cwd = os.getcwd(),
 			**formatVariables
 		)
+
 
 	sys.stderr.write( buildCommand + "\n" )
 	subprocess.check_call( buildCommand, shell=True )
