@@ -62,7 +62,7 @@ parser.add_argument(
 
 parser.add_argument(
 	"--arnoldRoot",
-	default = os.environ["ARNOLD_ROOT"],
+	default = os.environ.get( "ARNOLD_ROOT", "" ),
 	help = "The root of an installation of Arnold 5. "
 	       "Note that if cross-compiling a Linux build "
 	       "using Docker on a Mac, this must point to "
@@ -71,7 +71,7 @@ parser.add_argument(
 
 parser.add_argument(
 	"--delightRoot",
-	default = os.environ["DELIGHT"],
+	default = os.environ.get( "DELIGHT", "" ),
 	help = "The root of an installation of 3Delight 13. "
 	       "Note that if cross-compiling a Linux build "
 	       "using Docker on a Mac, this must point to "
@@ -120,22 +120,24 @@ else :
 
 # Check that our environment contains everything we need to do a build.
 
-for envVar in ( "GITHUB_RELEASE_TOKEN", ) :
-	if envVar not in os.environ	:
-		parser.exit( 1,  "{0} environment variable not set".format( envVar ) )
+if args.upload :
+	if "GITHUB_RELEASE_TOKEN" not in os.environ	:
+		parser.exit( 1,  "GITUHB_RELEASE_TOKEN environment variable not set" )
 
 # Check that the paths to the renderers are sane.
 
 platform = "linux" if "linux" in sys.platform or args.docker else "osx"
 libExtension = ".so" if platform == "linux" else ".dylib"
 
-arnoldLib = args.arnoldRoot + "/bin/libai" + libExtension
-if not os.path.exists( arnoldLib ) :
-	parser.exit( 1, "{0} not found\n".format( arnoldLib ) )
+if args.arnoldRoot :
+	arnoldLib = args.arnoldRoot + "/bin/libai" + libExtension
+	if not os.path.exists( arnoldLib ) :
+		parser.exit( 1, "{0} not found\n".format( arnoldLib ) )
 
-delightLib = args.delightRoot + "/lib/lib3delight" + libExtension
-if not os.path.exists( delightLib ) :
-	parser.exit( 1, "{0} not found\n".format( delightLib ) )
+if args.delightRoot :
+	delightLib = args.delightRoot + "/lib/lib3delight" + libExtension
+	if not os.path.exists( delightLib ) :
+		parser.exit( 1, "{0} not found\n".format( delightLib ) )
 
 # Build a little dictionary of variables we'll need over and over again
 # in string formatting operations, and use it to figure out what
@@ -149,9 +151,14 @@ formatVariables = {
 	"platform" : platform,
 	"arnoldRoot" : args.arnoldRoot,
 	"delight" : args.delightRoot,
-	"releaseToken" : os.environ["GITHUB_RELEASE_TOKEN"],
-	"auth" : '-H "Authorization: token {}"'.format( os.environ["GITHUB_RELEASE_TOKEN"] )
+	"releaseToken" : "",
+	"auth" : "",
 }
+
+githubToken = os.environ.get( "GITHUB_RELEASE_TOKEN", "" )
+if githubToken :
+	formatVariables[ "releaseToken" ] = githubToken
+	formatVariables[ "auth" ] = '-H "Authorization: token %s"' % githubToken
 
 if args.project == "gaffer" :
 	formatVariables["uploadFile"] = "{project}-{version}-{platform}.tar.gz".format( **formatVariables )
@@ -184,9 +191,22 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	sys.stderr.write( imageCommand + "\n" )
 	subprocess.check_call( imageCommand, shell = True )
 
-	containerMounts = "-v {arnoldRoot}:/arnold:ro,Z -v {delight}:/delight:ro,Z".format( **formatVariables )
-	containerEnv = "GITHUB_RELEASE_TOKEN={releaseToken} ARNOLD_ROOT=/arnold DELIGHT=/delight".format( **formatVariables )
+	containerEnv = []
+	if githubToken :
+		containerEnv.append( "GITHUB_RELEASE_TOKEN=%s" % githubToken )
+
+	containerMounts = []
+	if args.arnoldRoot :
+		containerMounts.append( "-v %s:/arnold:ro,Z" % args.arnoldRoot )
+		containerEnv.append( "ARNOLD_ROOT=/arnold" )
+	if args.delightRoot :
+		containerMounts.append( " -v %s:/delight:ro,Z" % args.delightRoot )
+		containerEnv.append( "DELIGHT=/delight" )
+
 	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
+
+	containerEnv = " ".join( containerEnv )
+	containerMounts = " ".join( containerMounts )
 
 	if args.interactive :
 		containerCommand = "env {env} bash".format( env = containerEnv )
