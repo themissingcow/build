@@ -92,7 +92,7 @@ RUN yum install -y \
 	pip install \
 		sphinx==1.8.0 \
 		sphinx_rtd_theme==0.4.3 \
-		recommonmark==0.4.0 \
+		recommonmark==0.5.0 \
 		docutils==0.12 && \
 #
 	yum install -y inkscape && \
