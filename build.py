@@ -394,7 +394,7 @@ else :
 
 		if not args.interactive :
 			# Copy out the generated package.
-			copyCommand = "docker cp {name}:/{project}-{version}-source/{uploadFile} ./".format(
+			copyCommand = "docker cp {name}:/source/{uploadFile} ./".format(
 				name = containerName,
 				**formatVariables
 			)
