@@ -48,6 +48,20 @@ import multiprocessing
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
+	"--build-env-version",
+	dest = "buildEnvVersion",
+	default = "1.0.0",
+	help = "The container image tag to use for docker builds."
+)
+
+parser.add_argument(
+	"--build-env-image",
+	dest = "buildEnvImage",
+	default = "gafferhq/build",
+	help = "The container image to use for docker builds."
+)
+
+parser.add_argument(
 	"--organisation",
 	default = "GafferHQ",
 	help = "The GitHub organisation containing the project to build."
@@ -184,12 +198,9 @@ if args.upload and releaseId() is None :
 
 # Restart ourselves inside a Docker container so that we use a repeatable
 # build environment.
-
 if args.docker and not os.path.exists( "/.dockerenv" ) :
 
-	imageCommand = "docker build -t gafferhq-build .".format( **formatVariables )
-	sys.stderr.write( imageCommand + "\n" )
-	subprocess.check_call( imageCommand, shell = True )
+	image = "%s:%s" % ( args.buildEnvImage, args.buildEnvVersion )
 
 	containerEnv = []
 	if githubToken :
@@ -204,7 +215,6 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 		containerEnv.append( "DELIGHT=/delight" )
 
 	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
-
 	containerEnv = " ".join( containerEnv )
 	containerMounts = " ".join( containerMounts )
 
@@ -213,12 +223,12 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	else :
 		containerCommand = "env {env} bash -c './build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
 
-	dockerCommand = "docker run {mounts} --name {name} -i -t gafferhq-build {command}".format(
-		name = containerName,
+	dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
 		mounts = containerMounts,
+		name = containerName,
+		image = image,
 		command = containerCommand
 	)
-
 	sys.stderr.write( dockerCommand + "\n" )
 	subprocess.check_call( dockerCommand, shell = True )
 
@@ -232,6 +242,9 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 		subprocess.check_call( copyCommand, shell = True )
 
 	sys.exit( 0 )
+
+# Here we're actually doing the build, this will run either locally or inside
+# the container bootstrapped above
 
 if os.path.exists( "/.dockerenv" ) and args.project == "gaffer" :
 
