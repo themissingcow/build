@@ -2,11 +2,31 @@
 # production, and meets the glibc requirements of VFXPlatform 2018
 # (2.17 or lower).
 
-FROM centos:7
+FROM centos:7.6.1810
 
+# As we don't want to inadvertently grab newer versions of our yum-installed
+# packages, we use yum-versionlock to keep them pinned. We track the list of
+# image packages here, then compare after our install steps to see what was
+# added, and only lock those. This saves us storing redundant entires for
+# packages installed in the base image.
+
+# To unlock versions, just make sure yum-versionlock.list is empty in the repo
+COPY versionlock.sh ./
+COPY yum-versionlock.list /etc/yum/pluginconf.d/versionlock.list
+
+RUN yum install -y yum-versionlock && \
+	./versionlock.sh list-installed /tmp/packages && \
+#
+#
+# NOTE: If you add a new yum package here, make sure you update the version
+# lock files as follows and commit the changes to yum-versionlock.list:
+#
+#   ./build-docker.py --update-package-versions --new-only
+#
 # We have to install scl as a separate yum command for some reason
 # otherwise we get `scl not found` errors...
-RUN yum install -y centos-release-scl && \
+#
+	yum install -y centos-release-scl && \
 	yum install -y devtoolset-6 && \
 #
 #	Install CMake, SCons, and other miscellaneous build tools.
@@ -21,7 +41,7 @@ RUN yum install -y centos-release-scl && \
 	ln -s /usr/bin/cmake3 /usr/bin/cmake && \
 #
 	yum install -y python2-pip.noarch && \
-	pip install --egg scons && \
+	pip install --egg scons==3.0.5 && \
 #
 	yum install -y \
 		patch \
@@ -67,20 +87,22 @@ RUN yum install -y \
 		xorg-x11-server-Xvfb \
 		mesa-dri-drivers.x86_64 \
 		metacity \
-		gnome-themes-standard
+		gnome-themes-standard && \
 #
-RUN pip install \
-		sphinx==1.8 \
-		sphinx_rtd_theme \
-		recommonmark \
+	pip install \
+		sphinx==1.8.0 \
+		sphinx_rtd_theme==0.4.3 \
+		recommonmark==0.5.0 \
 		docutils==0.12 && \
 #
-	yum install -y inkscape
-
-# Copy over build script and set an entry point that
-# will use the compiler we want.
-
-COPY build.py ./
+	yum install -y inkscape && \
+#
+# Now we've installed all our packages, update yum-versionlock for all the
+# new packages so we can copy the versionlock.list out of the container when we
+# want to update the build env.
+# If there were already locks in the list from the source checkout then the
+# correct version will already be installed and we just ignore this...
+	./versionlock.sh lock-new /tmp/packages
 
 # Make GCC 6.3.1 the default compiler, as per VFXPlatform 2018
 #

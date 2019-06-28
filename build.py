@@ -48,6 +48,20 @@ import multiprocessing
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
+	"--build-env-version",
+	dest = "buildEnvVersion",
+	default = "1.0.0",
+	help = "The container image tag to use for docker builds."
+)
+
+parser.add_argument(
+	"--build-env-image",
+	dest = "buildEnvImage",
+	default = "gafferhq/build",
+	help = "The container image to use for docker builds."
+)
+
+parser.add_argument(
 	"--organisation",
 	default = "GafferHQ",
 	help = "The GitHub organisation containing the project to build."
@@ -62,7 +76,7 @@ parser.add_argument(
 
 parser.add_argument(
 	"--arnoldRoot",
-	default = os.environ["ARNOLD_ROOT"],
+	default = os.environ.get( "ARNOLD_ROOT", "" ),
 	help = "The root of an installation of Arnold 5. "
 	       "Note that if cross-compiling a Linux build "
 	       "using Docker on a Mac, this must point to "
@@ -71,7 +85,7 @@ parser.add_argument(
 
 parser.add_argument(
 	"--delightRoot",
-	default = os.environ["DELIGHT"],
+	default = os.environ.get( "DELIGHT", "" ),
 	help = "The root of an installation of 3Delight 13. "
 	       "Note that if cross-compiling a Linux build "
 	       "using Docker on a Mac, this must point to "
@@ -120,22 +134,31 @@ else :
 
 # Check that our environment contains everything we need to do a build.
 
-for envVar in ( "GITHUB_RELEASE_TOKEN", ) :
-	if envVar not in os.environ	:
-		parser.exit( 1,  "{0} environment variable not set".format( envVar ) )
+if args.upload :
+
+	if "GITHUB_RELEASE_TOKEN" not in os.environ	:
+		parser.exit( 1,  "GITUHB_RELEASE_TOKEN environment variable not set\n" )
+
+	if not args.arnoldRoot :
+		parser.exit( 1,  "Release builds must include Arnold (set $ARNOLD_ROOT or --arnoldRoot)\n" )
+	if not args.delightRoot :
+		parser.exit( 1,  "Release builds must include 3Delight (set $DELIGHT_ROOT or --delightRoot)\n" )
+
 
 # Check that the paths to the renderers are sane.
 
 platform = "linux" if "linux" in sys.platform or args.docker else "osx"
 libExtension = ".so" if platform == "linux" else ".dylib"
 
-arnoldLib = args.arnoldRoot + "/bin/libai" + libExtension
-if not os.path.exists( arnoldLib ) :
-	parser.exit( 1, "{0} not found\n".format( arnoldLib ) )
+if args.arnoldRoot :
+	arnoldLib = args.arnoldRoot + "/bin/libai" + libExtension
+	if not os.path.exists( arnoldLib ) :
+		parser.exit( 1, "{0} not found\n".format( arnoldLib ) )
 
-delightLib = args.delightRoot + "/lib/lib3delight" + libExtension
-if not os.path.exists( delightLib ) :
-	parser.exit( 1, "{0} not found\n".format( delightLib ) )
+if args.delightRoot :
+	delightLib = args.delightRoot + "/lib/lib3delight" + libExtension
+	if not os.path.exists( delightLib ) :
+		parser.exit( 1, "{0} not found\n".format( delightLib ) )
 
 # Build a little dictionary of variables we'll need over and over again
 # in string formatting operations, and use it to figure out what
@@ -149,9 +172,14 @@ formatVariables = {
 	"platform" : platform,
 	"arnoldRoot" : args.arnoldRoot,
 	"delight" : args.delightRoot,
-	"releaseToken" : os.environ["GITHUB_RELEASE_TOKEN"],
-	"auth" : '-H "Authorization: token {}"'.format( os.environ["GITHUB_RELEASE_TOKEN"] )
+	"releaseToken" : "",
+	"auth" : "",
 }
+
+githubToken = os.environ.get( "GITHUB_RELEASE_TOKEN", "" )
+if githubToken :
+	formatVariables[ "releaseToken" ] = githubToken
+	formatVariables[ "auth" ] = '-H "Authorization: token %s"' % githubToken
 
 if args.project == "gaffer" :
 	formatVariables["uploadFile"] = "{project}-{version}-{platform}.tar.gz".format( **formatVariables )
@@ -177,28 +205,58 @@ if args.upload and releaseId() is None :
 
 # Restart ourselves inside a Docker container so that we use a repeatable
 # build environment.
-
 if args.docker and not os.path.exists( "/.dockerenv" ) :
 
-	imageCommand = "docker build -t gafferhq-build .".format( **formatVariables )
-	sys.stderr.write( imageCommand + "\n" )
-	subprocess.check_call( imageCommand, shell = True )
-
-	containerMounts = "-v {arnoldRoot}:/arnold:ro,Z -v {delight}:/delight:ro,Z".format( **formatVariables )
-	containerEnv = "GITHUB_RELEASE_TOKEN={releaseToken} ARNOLD_ROOT=/arnold DELIGHT=/delight".format( **formatVariables )
+	image = "%s:%s" % ( args.buildEnvImage, args.buildEnvVersion )
 	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
+
+	# We don't keep build.py in the images (otherwise we'd have to maintain
+	# backwards compatibility when changing this script), so copy it in
+
+	containerPrepCommand = " && ".join( (
+		"docker create --name {name} {image}",
+		"docker cp build.py {name}:/build.py",
+		# This saves our changes to that container, so we can pick it up
+		# in run later. We can't use exec as when you 'start' the image
+		# it immediately exits as there is nothing to do. Docker is process
+		# centric not 'machine' centric. You can either add in nasty sleep
+		# commands into the image, but this seems to be the more 'docker'
+		# way to do it.
+		"docker commit {name} {image}-run",
+		"docker rm {name}"
+	) ).format(
+		name = containerName,
+		image = image
+	)
+	sys.stderr.write( containerPrepCommand + "\n" )
+	subprocess.check_call( containerPrepCommand, shell = True )
+
+	containerEnv = []
+	if githubToken :
+		containerEnv.append( "GITHUB_RELEASE_TOKEN=%s" % githubToken )
+
+	containerMounts = []
+	if args.arnoldRoot :
+		containerMounts.append( "-v %s:/arnold:ro,Z" % args.arnoldRoot )
+		containerEnv.append( "ARNOLD_ROOT=/arnold" )
+	if args.delightRoot :
+		containerMounts.append( " -v %s:/delight:ro,Z" % args.delightRoot )
+		containerEnv.append( "DELIGHT=/delight" )
+
+	containerEnv = " ".join( containerEnv )
+	containerMounts = " ".join( containerMounts )
 
 	if args.interactive :
 		containerCommand = "env {env} bash".format( env = containerEnv )
 	else :
-		containerCommand = "env {env} bash -c './build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
+		containerCommand = "env {env} bash -c '/build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
 
-	dockerCommand = "docker run {mounts} --name {name} -i -t gafferhq-build {command}".format(
-		name = containerName,
+	dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
 		mounts = containerMounts,
+		name = containerName,
+		image = image,
 		command = containerCommand
 	)
-
 	sys.stderr.write( dockerCommand + "\n" )
 	subprocess.check_call( dockerCommand, shell = True )
 
@@ -212,6 +270,9 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 		subprocess.check_call( copyCommand, shell = True )
 
 	sys.exit( 0 )
+
+# Here we're actually doing the build, this will run either locally or inside
+# the container bootstrapped above
 
 if os.path.exists( "/.dockerenv" ) and args.project == "gaffer" :
 
