@@ -135,8 +135,15 @@ else :
 # Check that our environment contains everything we need to do a build.
 
 if args.upload :
+
 	if "GITHUB_RELEASE_TOKEN" not in os.environ	:
-		parser.exit( 1,  "GITUHB_RELEASE_TOKEN environment variable not set" )
+		parser.exit( 1,  "GITUHB_RELEASE_TOKEN environment variable not set\n" )
+
+	if not args.arnoldRoot :
+		parser.exit( 1,  "Release builds must include Arnold (set $ARNOLD_ROOT or --arnoldRoot)\n" )
+	if not args.delightRoot :
+		parser.exit( 1,  "Release builds must include 3Delight (set $DELIGHT_ROOT or --delightRoot)\n" )
+
 
 # Check that the paths to the renderers are sane.
 
