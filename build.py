@@ -306,7 +306,11 @@ os.chdir( sourceDirName )
 # against the same dependencies we have tested against.
 
 if args.project == "gaffer" :
-	subprocess.check_call( "./config/travis/installDependencies.sh", shell = True )
+	# The scripts moved in #3242
+	depsInstallScript = "./config/installDependencies.sh"
+	if not os.path.exists( os.path.join( os.getcwd(), depsInstallScript ) ) :
+		depsInstallScript = "./config/travis/installDependencies.sh"
+	subprocess.check_call( depsInstallScript, shell = True )
 
 # Perform the build.
 
