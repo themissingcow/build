@@ -44,6 +44,17 @@ Remove old images :
 
 `docker images -q --filter dangling=true | xargs docker rmi`
 
+Debug a stopped build container :
+
+```
+# Find the container of interest
+docker ps -a
+# Make a new image from container
+docker commit <containerID> <imageName>
+# Run interactive session in new image
+docker run -it <imageName> /bin/bash
+```
+
 Building the build environment
 ------------------------------
 
