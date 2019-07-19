@@ -76,11 +76,11 @@ environment. To get around this, we make use of `yum versionlock`. The
 `yum-versionlock.list` file in the repository is copied into the base Centos
 image such that when `yum` runs, it will repeatably install the expected
 versions. In order to help manage this, the `build.py` script has a few options
-to aid updating of the lock list when new packages are added of updated required.
+to aid updating of the lock list when new packages are added or updates are required.
 
  - `--update-version-locks` When set this will ignore all version locks and
    update `yum-versionlock.list` to the 'current' version of all packages
-   installed during docker's build. The revised file can then be commit, tagged
+   installed during docker's build. The revised file can then be commited and tagged,
    and a new docker image pushed to docker hub.
 
  - `--new-only` When set the existing version lock list will not be cleared.
