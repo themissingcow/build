@@ -93,6 +93,15 @@ parser.add_argument(
 )
 
 parser.add_argument(
+	"--renderManRoot",
+	default = os.environ.get( "RMANTREE", "" ),
+	help = "The root of an installation of RenderMan 22.6 or later. "
+	       "Note that if cross-compiling a Linux build "
+	       "using Docker on a Mac, this must point to "
+	       "a Linux build of RenderMan."
+)
+
+parser.add_argument(
 	"--version",
 	help = "The version to build. Can either be a tag or SHA1 commit hash."
 )
@@ -160,6 +169,11 @@ if args.delightRoot :
 	if not os.path.exists( delightLib ) :
 		parser.exit( 1, "{0} not found\n".format( delightLib ) )
 
+if args.renderManRoot :
+	renderManLib = args.renderManRoot + "/lib/libprman" + libExtension
+	if not os.path.exists( renderManLib ) :
+		parser.exit( 1, "{0} not found\n".format( renderManLib ) )
+
 # Build a little dictionary of variables we'll need over and over again
 # in string formatting operations, and use it to figure out what
 # package we will eventually be generating.
@@ -172,6 +186,7 @@ formatVariables = {
 	"platform" : platform,
 	"arnoldRoot" : args.arnoldRoot,
 	"delight" : args.delightRoot,
+	"renderManRoot" : args.renderManRoot,
 	"releaseToken" : "",
 	"auth" : "",
 }
@@ -242,6 +257,9 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	if args.delightRoot :
 		containerMounts.append( " -v %s:/delight:ro,Z" % args.delightRoot )
 		containerEnv.append( "DELIGHT=/delight" )
+	if args.renderManRoot :
+		containerMounts.append( "-v %s:/renderMan:ro,Z" % args.renderManRoot )
+		containerEnv.append( "RMANTREE=/renderMan" )
 
 	containerEnv = " ".join( containerEnv )
 	containerMounts = " ".join( containerMounts )
@@ -320,7 +338,7 @@ if args.project == "gaffer" :
 	# preferred python from the environment. SCons itself
 	# unfortunately hardcodes `/usr/bin/python`, which might not
 	# have the modules we need to build the docs.
-	buildCommand = "python `which scons` package PACKAGE_FILE={uploadFile} ENV_VARS_TO_IMPORT=PATH DELIGHT_ROOT={delight} ARNOLD_ROOT={arnoldRoot} OPTIONS='' -j {cpus}".format(
+	buildCommand = "python `which scons` package PACKAGE_FILE={uploadFile} ENV_VARS_TO_IMPORT=PATH DELIGHT_ROOT={delight} ARNOLD_ROOT={arnoldRoot} RENDERMAN_ROOT={renderManRoot} OPTIONS='' -j {cpus}".format(
 		cpus=multiprocessing.cpu_count(), **formatVariables
 	)
 
