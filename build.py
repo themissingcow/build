@@ -146,7 +146,7 @@ else :
 if args.upload :
 
 	if "GITHUB_RELEASE_TOKEN" not in os.environ	:
-		parser.exit( 1,  "GITUHB_RELEASE_TOKEN environment variable not set\n" )
+		parser.exit( 1,  "GITHUB_RELEASE_TOKEN environment variable not set\n" )
 
 	if not args.arnoldRoot :
 		parser.exit( 1,  "Release builds must include Arnold (set $ARNOLD_ROOT or --arnoldRoot)\n" )
