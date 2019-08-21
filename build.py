@@ -156,7 +156,7 @@ if args.upload :
 
 # Check that the paths to the renderers are sane.
 
-platform = "linux" if "linux" in sys.platform or args.docker else "osx"
+platform = "linux" if "linux" in sys.platform or args.docker else "macos"
 libExtension = ".so" if platform == "linux" else ".dylib"
 
 if args.arnoldRoot :
