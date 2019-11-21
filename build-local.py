@@ -148,31 +148,10 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	image = "%s:%s" % ( args.buildEnvImage, args.buildEnvVersion )
 	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
 
-	# We don't keep build.py in the images (otherwise we'd have to maintain
-	# backwards compatibility when changing this script), so copy it in
-
-	containerPrepCommand = " && ".join( (
-		"docker create --name {name} {image}",
-		"docker cp {thisScript} {name}:/build-local.py",
-		# This saves our changes to that container, so we can pick it up
-		# in run later. We can't use exec as when you 'start' the image
-		# it immediately exits as there is nothing to do. Docker is process
-		# centric not 'machine' centric. You can either add in nasty sleep
-		# commands into the image, but this seems to be the more 'docker'
-		# way to do it.
-		"docker commit {name} {image}-run",
-		"docker rm {name}"
-	) ).format(
-		thisScript = __file__,
-		name = containerName,
-		image = image
-	)
-	sys.stderr.write( containerPrepCommand + "\n" )
-	subprocess.check_call( containerPrepCommand, shell = True )
-
 	containerEnv = []
 	containerMounts = []
 
+	containerMounts.append( "-v %s:/scripts:Z" % os.path.dirname( __file__ ) )
 	containerMounts.append( "-v %s:/source:Z" % args.source )
 	containerMounts.append( "-v %s:/build:Z" % args.buildDir )
 	if args.buildCacheDir :
@@ -189,9 +168,9 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	containerEnv = " ".join( containerEnv )
 	containerMounts = " ".join( containerMounts )
 
-	containerCommand = "env {env} bash -c '/build-local.py --sconsCmd={cmd} --buildDir=/build --buildCacheDir=/buildCache --source=/source'".format( env = containerEnv, cmd = args.sconsCmd, **formatVariables )
+	containerCommand = "env {env} bash -c '/scripts/build-local.py --sconsCmd={cmd} --buildDir=/build --buildCacheDir=/buildCache --source=/source'".format( env = containerEnv, cmd = args.sconsCmd, **formatVariables )
 
-	dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
+	dockerCommand = "docker run -it {mounts} --name {name} {image} {command}".format(
 		source = args.source,
 		buildDir = args.buildDir,
 		mounts = containerMounts,
