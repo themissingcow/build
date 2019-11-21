@@ -98,6 +98,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+	"--sconsCmd",
+	default = "docs",
+	help = "The scons command to call"
+)
+
+parser.add_argument(
 	"--docker",
 	type = distutils.util.strtobool,
 	default = "linux" in sys.platform,
@@ -183,7 +189,7 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	containerEnv = " ".join( containerEnv )
 	containerMounts = " ".join( containerMounts )
 
-	containerCommand = "env {env} bash -c '/build-local.py --buildDir=/build --buildCacheDir=/buildCache --source=/source'".format( env = containerEnv, **formatVariables )
+	containerCommand = "env {env} bash -c '/build-local.py --sconsCmd={cmd} --buildDir=/build --buildCacheDir=/buildCache --source=/source'".format( env = containerEnv, cmd = args.sconsCmd, **formatVariables )
 
 	dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
 		source = args.source,
@@ -217,8 +223,10 @@ os.chdir( args.source )
 # preferred python from the environment. SCons itself
 # unfortunately hardcodes `/usr/bin/python`, which might not
 # have the modules we need to build the docs.
-buildCommand = "python `which scons` docs ENV_VARS_TO_IMPORT=PATH DELIGHT_ROOT={delight} ARNOLD_ROOT={arnoldRoot} BUILD_DIR={buildDir} BUILD_CACHEDIR={buildCacheDir} OPTIONS='' -j {cpus}".format(
-	cpus=multiprocessing.cpu_count(), **formatVariables
+buildCommand = "python `which scons` {cmd} ENV_VARS_TO_IMPORT=PATH DELIGHT_ROOT={delight} ARNOLD_ROOT={arnoldRoot} BUILD_DIR={buildDir} BUILD_CACHEDIR={buildCacheDir} OPTIONS='' -j {cpus}".format(
+	cmd=args.sconsCmd,
+	cpus=multiprocessing.cpu_count(),
+	**formatVariables
 )
 
 sys.stderr.write( buildCommand + "\n" )
