@@ -84,7 +84,18 @@ RUN yum install -y yum-versionlock && \
 #	Install Appleseed dependencies
 #
 	yum install -y \
-		lz4 lz4-devel
+		lz4 lz4-devel && \
+#
+#   Install OpenImageIO dependencies (RPM Fusion is for libheif)
+#
+	yum localinstall -y --nogpgcheck \
+		https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm && \
+#
+	yum install -y \
+		libheif \
+		libheif-devel \
+		LibRaw \
+		LibRaw-devel
 #
 # Install packages needed to generate the
 # Gaffer documentation.
