@@ -44,6 +44,7 @@ RUN yum install -y yum-versionlock && \
 	pip install --egg scons==3.0.5 && \
 #
 	yum install -y \
+		git \
 		patch \
 		doxygen && \
 #
@@ -78,7 +79,12 @@ RUN yum install -y yum-versionlock && \
 #
 	yum install -y \
 		xkeyboard-config.noarch \
-		fontconfig-devel.x86_64
+		fontconfig-devel.x86_64 && \
+#
+#	Install Appleseed dependencies
+#
+	yum install -y \
+		lz4 lz4-devel
 #
 # Install packages needed to generate the
 # Gaffer documentation.
