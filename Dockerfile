@@ -44,6 +44,7 @@ RUN yum install -y yum-versionlock && \
 	pip install --egg scons==3.0.5 && \
 #
 	yum install -y \
+		git \
 		patch \
 		doxygen && \
 #
