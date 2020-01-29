@@ -50,7 +50,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
 	"--build-env-version",
 	dest = "buildEnvVersion",
-	default = "1.0.0",
+	default = "1.1.0",
 	help = "The container image tag to use for docker builds."
 )
 
