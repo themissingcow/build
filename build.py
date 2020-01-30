@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
 	"--build-env-image",
 	dest = "buildEnvImage",
-	default = "docker.pkg.github.com/gafferhq/build/build",
+	default = "gafferhq/build",
 	help = "The container image to use for docker builds."
 )
 
