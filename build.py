@@ -77,7 +77,7 @@ parser.add_argument(
 parser.add_argument(
 	"--arnoldRoot",
 	default = os.environ.get( "ARNOLD_ROOT", "" ),
-	help = "The root of an installation of Arnold 5. "
+	help = "The root of an installation of Arnold 6. "
 	       "Note that if cross-compiling a Linux build "
 	       "using Docker on a Mac, this must point to "
 	       "a Linux build of Arnold."
@@ -344,7 +344,7 @@ if args.project == "gaffer" :
 
 else :
 
-	buildCommand = "env RMAN_ROOT={delight} ARNOLD_ROOT={arnoldRoot} BUILD_DIR={cwd}/gafferDependenciesBuild ./build/buildAll.sh ".format(
+	buildCommand = "env RMAN_ROOT={delight} ARNOLD_ROOT={arnoldRoot} ./build.py --buildDir {cwd}/gafferDependenciesBuild".format(
 		cwd = os.getcwd(),
 		**formatVariables
 	)
