@@ -94,7 +94,7 @@ RUN yum install -y \
 		mesa-dri-drivers.x86_64 \
 		metacity \
 		gnome-themes-standard && \
-#
+# Note: When updating these, also update gaffer/config/azure/build.yaml
 	pip install \
 		sphinx==1.8.0 \
 		sphinx_rtd_theme==0.4.3 \
