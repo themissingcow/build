@@ -94,7 +94,7 @@ RUN yum install -y \
 		mesa-dri-drivers.x86_64 \
 		metacity \
 		gnome-themes-standard && \
-#
+# Note: When updating these, also update gaffer/config/azure/build.yaml
 	pip install \
 		sphinx==1.8.0 \
 		sphinx_rtd_theme==0.4.3 \
@@ -116,7 +116,7 @@ RUN yum install -y \
 # are sourced whenever a non-interactive sh/bash session is started.
 # PROMPT_COMMAND is evaluated before a prompt is displayed in interactive
 # sessions. Using all of these ensures that our scl_enable script
-# is always run, regardless of which shell is being used. The scl_enable script
+# is always run, regardless of which shell is being used. The scl_enable script
 # simply unsets these (as its work will be done) and sources the appropriate
 # scl environment. Thanks to:
 # https://austindewey.com/2019/03/26/enabling-software-collections-binaries-on-a-docker-image/
