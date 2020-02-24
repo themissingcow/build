@@ -30,19 +30,18 @@ Make a Linux release using Docker on a Mac :
 Steps remaining to be automated
 -------------------------------
 
-- Update https://github.com/GafferHQ/documentation to include
-  the latest docs.
+- Update https://github.com/GafferHQ/documentation to include the latest docs.
 
 Docker Cheatsheet
 -----------------
 
-Remove stopped containers :
+Remove stopped containers and dangling images :
 
-`docker ps -aq --no-trunc | xargs docker rm`
+`docker system prune`
 
-Remove old images :
+Remove all images, not just temporary container images :
 
-`docker images -q --filter dangling=true | xargs docker rmi`
+`docker system prune -a`
 
 Debug a stopped build container :
 
@@ -80,7 +79,7 @@ to aid updating of the lock list when new packages are added or updates are requ
 
  - `--update-version-locks` When set this will ignore all version locks and
    update `yum-versionlock.list` to the 'current' version of all packages
-   installed during docker's build. The revised file can then be commited and tagged,
+   installed during docker's build. The revised file can then be committed and tagged,
    and a new docker image pushed to docker hub.
 
  - `--new-only` When set the existing version lock list will not be cleared.
@@ -89,6 +88,11 @@ to aid updating of the lock list when new packages are added or updates are requ
    packages.
 
  - `--upload` Will push the built image to a docker hub tag.
+
+> NOTE: GitHub Packages. We have an Action that will build the Docker image and publish
+> it to GitHub Packages for the repo whenever a release is made. This image is perfectly
+> usable, however, at the time of going to press, it requires a login to pull. We're
+> maintaining the DockerHub hosted images until we have migrated CI/they fix this.
 
 ### Cheat sheet
 
