@@ -27,6 +27,8 @@ Make a Linux release using Docker on a Mac :
 
 `./build.py --docker 1 --arnoldRoot /path/to/linux/arnoldRoot --delightRoot /path/to/linux/delightRoot --version 0.45.0.0 --upload 1`
 
+At times, builds may fail for assorted reasons. In such cases, the `-resume 1` argument can be used to attempt to continue making use of any existing build artifacts. Without this flag, the each build will start with a clean source tree/container.
+
 Steps remaining to be automated
 -------------------------------
 

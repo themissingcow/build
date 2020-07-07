@@ -134,7 +134,7 @@ parser.add_argument(
 	"--resume",
 	type = distutils.util.strtobool,
 	default = "0",
-	help = "Allows non-container builds to reuse an existing build in the case of previous errors."
+	help = "Allows builds to reuse any existing build artifacts, in the case of previous errors."
 )
 
 args = parser.parse_args()
@@ -190,6 +190,7 @@ formatVariables = {
 	"project" : args.project,
 	"version" : args.version,
 	"upload" : args.upload,
+	"resume" : args.resume,
 	"platform" : platform,
 	"arnoldRoot" : args.arnoldRoot,
 	"delight" : args.delightRoot,
@@ -229,29 +230,53 @@ if args.upload and releaseId() is None :
 # build environment.
 if args.docker and not os.path.exists( "/.dockerenv" ) :
 
-	image = "%s:%s" % ( args.buildEnvImage, args.buildEnvVersion )
-	containerName = "gafferhq-build-{id}".format( id = uuid.uuid1() )
+	import docker
+	import hashlib
+
+	d = docker.client.from_env()
+
+	imageName = "%s:%s" % ( args.buildEnvImage, args.buildEnvVersion )
+	containerName = "gafferhq-build-{organisation}-{project}-{version}".format( **formatVariables )
 
 	# We don't keep build.py in the images (otherwise we'd have to maintain
-	# backwards compatibility when changing this script), so copy it in
+	# backwards compatibility when changing this script), so copy it in.
+	# We use the hash of the build script for re-use.
 
-	containerPrepCommand = " && ".join( (
-		"docker create --name {name} {image}",
-		"docker cp build.py {name}:/build.py",
-		# This saves our changes to that container, so we can pick it up
-		# in run later. We can't use exec as when you 'start' the image
-		# it immediately exits as there is nothing to do. Docker is process
-		# centric not 'machine' centric. You can either add in nasty sleep
-		# commands into the image, but this seems to be the more 'docker'
-		# way to do it.
-		"docker commit {name} {image}-run",
-		"docker rm {name}"
-	) ).format(
-		name = containerName,
-		image = image
-	)
-	sys.stderr.write( containerPrepCommand + "\n" )
-	subprocess.check_call( containerPrepCommand, shell = True )
+	digest = hashlib.md5()
+	with open( "./build.py" ) as f :
+		digest.update( f.read() )
+
+	buildImageName = "{}-{}-run".format( imageName, digest.hexdigest() )
+
+	# Ensure we have a suitable image for this hash of the build script
+	try :
+
+		d.images.get( buildImageName )
+		sys.stderr.write( "Reusing {}\n".format( buildImageName ) )
+
+	except docker.errors.NotFound :
+
+		sys.stderr.write( "Creating {}\n".format( buildImageName ) )
+		if args.resume :
+			sys.stderr.write( "WARNING: Disabling resume as build image is different\n" )
+			args.resume = False
+
+		# There is no docker API equivalent for docker cp, it requires us to
+		# work with tar archives.  This is several orders of magnitude easier.
+		# We commit our changes to the base image, so we can re-use it image in
+		# subsequent invocations.
+		imagePrepCommand = " && ".join( (
+			"docker create --name {tmpName} {image}",
+			"docker cp build.py {tmpName}:/build.py",
+			"docker commit {tmpName} {buildImage}",
+			"docker rm {tmpName}"
+		) ).format(
+			image = imageName,
+			tmpName = uuid.uuid1(),
+			buildImage = buildImageName
+		)
+		sys.stderr.write( imagePrepCommand + "\n" )
+		subprocess.check_call( imagePrepCommand, shell = True )
 
 	containerEnv = []
 	if githubToken :
@@ -274,14 +299,45 @@ if args.docker and not os.path.exists( "/.dockerenv" ) :
 	if args.interactive :
 		containerCommand = "env {env} bash".format( env = containerEnv )
 	else :
-		containerCommand = "env {env} bash -c '/build.py --project {project} --version {version} --upload {upload}'".format( env = containerEnv, **formatVariables )
+		containerCommand = "env {env} bash -c '/build.py --project {project} --version {version} --upload {upload} --resume {resume}'".format( env = containerEnv, **formatVariables )
 
-	dockerCommand = "docker run -it {mounts} --name {name} {image}-run {command}".format(
-		mounts = containerMounts,
-		name = containerName,
-		image = image,
-		command = containerCommand
-	)
+	# Check to see if we have an existing container from a previous run.
+	# We either re-use it, or clean it up to avoid proliferating containers.
+	container = None
+	try :
+
+		existing = d.containers.get( containerName )
+		sys.stderr.write( "Found existing container with name {} [{}]".format( containerName, existing.status ) )
+		if args.resume :
+			if existing.status == "exited" :
+				sys.stderr.write( " restarting..." )
+				existing.start()
+			container = existing
+			sys.stderr.write( " reusing" )
+		else :
+			sys.stderr.write( " removing..." )
+			existing.remove( force = True )
+		sys.stderr.write( "\n" )
+
+	except docker.errors.NotFound :
+		sys.stderr.write( "No existing container with name {}\n".format( containerName ) )
+
+	if container is not None :
+
+		dockerCommand = "docker exec -it {name} {command}".format(
+			name = containerName,
+			command = containerCommand
+		)
+
+	else :
+
+		dockerCommand = "docker run -it {mounts} --name {name} {image} {command}".format(
+			mounts = containerMounts,
+			name = containerName,
+			image = buildImageName,
+			command = containerCommand
+		)
+
 	sys.stderr.write( dockerCommand + "\n" )
 	subprocess.check_call( dockerCommand, shell = True )
 
@@ -307,24 +363,36 @@ if os.path.exists( "/.dockerenv" ) and args.project == "gaffer" :
 	os.environ["DISPLAY"] = ":99"
 	os.system( "metacity&" )
 
-# Download source code
 
-sourceURL = "https://github.com/{organisation}/{project}/archive/{version}.tar.gz".format( **formatVariables )
-sys.stderr.write( "Downloading source \"%s\"\n" % sourceURL )
+# Check we have our source tree
 
 sourceDirName = "{project}-{version}-source".format( **formatVariables )
-tarFileName = "{0}.tar.gz".format( sourceDirName )
-downloadCommand = "curl -L {0} > {1}".format( sourceURL, tarFileName )
-sys.stderr.write( downloadCommand + "\n" )
-subprocess.check_call( downloadCommand, shell = True )
 
-sys.stderr.write( "Decompressing source to \"%s\"\n" % sourceDirName )
+if os.path.exists( sourceDirName ) :
 
-if not args.resume :
-	shutil.rmtree( sourceDirName, ignore_errors = True )
+	if args.resume :
+		sys.stderr.write( "Preserving \"%s\"\n" % sourceDirName )
+	else :
+		sys.stderr.write( "Removing \"%s\"\n" % sourceDirName )
+		shutil.rmtree( sourceDirName, ignore_errors = True )
+
 if not os.path.exists( sourceDirName ) :
+
 	os.makedirs( sourceDirName )
-subprocess.check_call( "tar xf %s -C %s --strip-components=1" % ( tarFileName, sourceDirName ), shell = True )
+
+	# Download source code
+
+	sourceURL = "https://github.com/{organisation}/{project}/archive/{version}.tar.gz".format( **formatVariables )
+	sys.stderr.write( "Downloading source \"%s\"\n" % sourceURL )
+
+	tarFileName = "{0}.tar.gz".format( sourceDirName )
+	downloadCommand = "curl -L {0} > {1}".format( sourceURL, tarFileName )
+	sys.stderr.write( downloadCommand + "\n" )
+	subprocess.check_call( downloadCommand, shell = True )
+
+	sys.stderr.write( "Decompressing source to \"%s\"\n" % sourceDirName )
+	subprocess.check_call( "tar xf %s -C %s --strip-components=1" % ( tarFileName, sourceDirName ), shell = True )
+
 os.chdir( sourceDirName )
 
 # Download precompiled dependencies. We do this using the
