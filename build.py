@@ -130,6 +130,13 @@ parser.add_argument(
 		   "performing the build. This is useful for debugging."
 )
 
+parser.add_argument(
+	"--resume",
+	type = distutils.util.strtobool,
+	default = "0",
+	help = "Allows non-container builds to reuse an existing build in the case of previous errors."
+)
+
 args = parser.parse_args()
 
 if args.interactive :
@@ -313,8 +320,10 @@ subprocess.check_call( downloadCommand, shell = True )
 
 sys.stderr.write( "Decompressing source to \"%s\"\n" % sourceDirName )
 
-shutil.rmtree( sourceDirName, ignore_errors = True )
-os.makedirs( sourceDirName )
+if not args.resume :
+	shutil.rmtree( sourceDirName, ignore_errors = True )
+if not os.path.exists( sourceDirName ) :
+	os.makedirs( sourceDirName )
 subprocess.check_call( "tar xf %s -C %s --strip-components=1" % ( tarFileName, sourceDirName ), shell = True )
 os.chdir( sourceDirName )
 
