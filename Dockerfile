@@ -42,7 +42,8 @@ RUN yum install -y yum-versionlock && \
 	ln -s /usr/bin/cmake3 /usr/bin/cmake && \
 #
 	yum install -y python2-pip.noarch && \
-	pip install --egg scons==3.0.5 && \
+	pip install --upgrade pip && \
+	pip install scons==3.0.5 && \
 #
 	yum install -y \
 		git \
