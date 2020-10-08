@@ -27,6 +27,7 @@ RUN yum install -y yum-versionlock && \
 # otherwise we get `scl not found` errors...
 #
 	yum install -y centos-release-scl && \
+	sed -i 's/7/7.6.1810/g; s|^#\s*\(baseurl=http://\)mirror|\1vault|g; /mirrorlist/d' /etc/yum.repos.d/CentOS-SCLo-*.repo && \
 	yum install -y devtoolset-6 && \
 #
 #	Install CMake, SCons, and other miscellaneous build tools.
