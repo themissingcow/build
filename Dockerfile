@@ -81,7 +81,8 @@ RUN yum install -y yum-versionlock && \
 #
 	yum install -y \
 		xkeyboard-config.noarch \
-		fontconfig-devel.x86_64 && \
+		fontconfig-devel.x86_64 \
+		libxkbcommon-x11-devel.x86_64 && \
 #
 #	Install Appleseed dependencies
 #
