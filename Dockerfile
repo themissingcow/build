@@ -27,6 +27,7 @@ RUN yum install -y yum-versionlock && \
 # otherwise we get `scl not found` errors...
 #
 	yum install -y centos-release-scl && \
+	sed -i 's/7/7.6.1810/g; s|^#\s*\(baseurl=http://\)mirror|\1vault|g; /mirrorlist/d' /etc/yum.repos.d/CentOS-SCLo-*.repo && \
 	yum install -y devtoolset-6 && \
 #
 #	Install CMake, SCons, and other miscellaneous build tools.
@@ -41,7 +42,8 @@ RUN yum install -y yum-versionlock && \
 	ln -s /usr/bin/cmake3 /usr/bin/cmake && \
 #
 	yum install -y python2-pip.noarch && \
-	pip install --egg scons==3.0.5 && \
+	pip install --upgrade pip && \
+	pip install scons==3.0.5 && \
 #
 	yum install -y \
 		git \
@@ -79,7 +81,8 @@ RUN yum install -y yum-versionlock && \
 #
 	yum install -y \
 		xkeyboard-config.noarch \
-		fontconfig-devel.x86_64 && \
+		fontconfig-devel.x86_64 \
+		libxkbcommon-x11-devel.x86_64 && \
 #
 #	Install Appleseed dependencies
 #
@@ -96,7 +99,7 @@ RUN yum install -y \
 		gnome-themes-standard && \
 # Note: When updating these, also update gaffer/config/azure/build.yaml
 	pip install \
-		sphinx==1.8.0 \
+		sphinx==1.8.1 \
 		sphinx_rtd_theme==0.4.3 \
 		recommonmark==0.5.0 \
 		docutils==0.12 && \
