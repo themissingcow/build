@@ -1,3 +1,13 @@
+1.2.0
+=====
+
+- Dockerfile :
+  - Switched SCL packages to the `7.6.1810` vault.
+  - Updated sundry SCL dependency versions.
+  - Added automatic `pip` upgrade to latest supported version.
+  - Added `libxkb-common-x11-devel` package.
+  - Updated `sphinx` to 1.8.1.
+
 1.1.0
 =====
 
