@@ -99,7 +99,7 @@ RUN yum install -y \
 		gnome-themes-standard && \
 # Note: When updating these, also update gaffer/config/azure/build.yaml
 	pip install \
-		sphinx==1.8.0 \
+		sphinx==1.8.1 \
 		sphinx_rtd_theme==0.4.3 \
 		recommonmark==0.5.0 \
 		docutils==0.12 && \
